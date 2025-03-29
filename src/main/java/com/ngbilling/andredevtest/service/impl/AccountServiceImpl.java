@@ -6,6 +6,7 @@ import com.ngbilling.andredevtest.repository.AccountRepository;
 import com.ngbilling.andredevtest.service.AccountService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -20,6 +21,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @Transactional
     public AccountDTO save(AccountDTO dto) {
         Account account = new Account();
         account.setNumber(dto.number());

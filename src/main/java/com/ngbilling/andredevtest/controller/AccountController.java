@@ -30,8 +30,14 @@ public class AccountController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
         }
 
-        AccountDTO newAccount = service.save(dto);
-        return new ResponseEntity<>(newAccount, HttpStatus.CREATED);
+        AccountDTO newAccount = null;
+        try {
+            newAccount = service.save(dto);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(newAccount);
     }
 
     @GetMapping
