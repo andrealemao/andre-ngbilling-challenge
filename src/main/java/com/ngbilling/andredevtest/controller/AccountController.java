@@ -1,55 +1,57 @@
 package com.ngbilling.andredevtest.controller;
 
 import com.ngbilling.andredevtest.controller.dto.AccountDTO;
-import com.ngbilling.andredevtest.model.Account;
 import com.ngbilling.andredevtest.service.AccountService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/conta")
 public class AccountController {
 
+    private final AccountService service;
+
     @Autowired
-    private AccountService service;
+    public AccountController(AccountService service) {
+        this.service = service;
+    }
 
     @PostMapping
-    public ResponseEntity<?> save(@RequestBody AccountDTO dto) {
-        Optional<Account> accountToValidate = service.findByNumber(dto.number());
-
-        if (accountToValidate.isPresent()) {
-            Map<String, String> response = new HashMap<>();
-            response.put("mensagem", "Conta com este número já existe.");
-
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    public ResponseEntity<?> createAccount(@RequestBody @Valid AccountDTO dto) {
+        if (service.findByNumber(dto.number()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("mensagem", "Já existe uma conta com o número informado!"));
         }
 
-        AccountDTO newAccount = null;
         try {
-            newAccount = service.save(dto);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            AccountDTO newAccount = service.save(dto);
+            return ResponseEntity.status(HttpStatus.CREATED).body(newAccount);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("mensagem", "Erro interno ao salvar a conta. Contate o suporte."));
         }
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(newAccount);
     }
 
     @GetMapping
-    public ResponseEntity<AccountDTO> getAccountByNumber(@RequestParam(name = "numero_conta") int number) {
-        return service
-                .findByNumber(number)
-                .map(acc -> {
-                    AccountDTO accountDTO = new AccountDTO(
-                            acc.getNumber(),
-                            acc.getBalance()
-                    );
-                    return ResponseEntity.ok(accountDTO);
-                }).orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<?> getAccountByNumber(@RequestParam(name = "numero_conta") int number) {
+        return service.findByNumber(number)
+                .map(account -> ResponseEntity.ok(new AccountDTO(account.getNumber(), account.getBalance())))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<?> handleValidationException(MethodArgumentNotValidException ex) {
+        StringBuilder errorMessage = new StringBuilder();
+        ex.getBindingResult().getFieldErrors().forEach(error -> {
+            errorMessage.append(error.getDefaultMessage()).append("; ");
+        });
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("mensagem", errorMessage.toString()));
     }
 }

@@ -9,8 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
@@ -21,14 +19,10 @@ public class TransactionServiceImpl implements TransactionService {
         this.repository = repository;
     }
 
-
     @Override
     @Transactional
     public Transaction save(TransactionDTO dto, Account account) {
-        Transaction transaction = new Transaction();
-        transaction.setPaymentMethod(dto.paymentMethod());
-        transaction.setAccount(account);
-
+        Transaction transaction = new Transaction(dto.paymentMethod(), account);
         repository.save(transaction);
 
         return transaction;

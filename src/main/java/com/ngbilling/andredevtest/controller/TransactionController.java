@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -23,45 +22,42 @@ import java.util.Optional;
 @RequestMapping("/transacao")
 public class TransactionController {
 
-    @Autowired
-    private TransactionService service;
+    private final TransactionService service;
+    private final AccountService accountService;
+    private final BalanceCalculator calculator;
 
     @Autowired
-    private AccountService accountService;
-
-    @Autowired
-    private BalanceCalculator calculator;
+    public TransactionController(TransactionService service, AccountService accountService, BalanceCalculator calculator) {
+        this.service = service;
+        this.accountService = accountService;
+        this.calculator = calculator;
+    }
 
     @PostMapping
     public ResponseEntity<?> createTransaction(@RequestBody TransactionDTO dto) {
-        Optional<Account> account = accountService.findByNumber(dto.number());
+        Optional<Account> accountOpt = accountService.findByNumber(dto.number());
 
-        if (account.isEmpty()) {
-            Map<String, String> response = new HashMap<>();
-            response.put("mensagem", "Não existe uma conta com o número informado!");
-
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        if (accountOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("mensagem", "Não existe uma conta com o número informado!"));
         }
 
-        BigDecimal balance = account.get().getBalance();
-        if (dto.value().compareTo(balance) > 0)
-            return ResponseEntity.notFound().build();
+        Account account = accountOpt.get();
 
-        BigDecimal newBalance = calculator.calculateFinalBalance(dto.paymentMethod(), balance, dto.value());
-
-        account.get().setBalance(newBalance);
-
-        AccountDTO accountDTO = new AccountDTO(
-                account.get().getNumber(),
-                account.get().getBalance()
-        );
+        if (dto.value().compareTo(account.getBalance()) > 0)
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("mensagem", "Saldo insuficiente!"));
 
         try {
-            service.save(dto, account.get());
+            BigDecimal newBalance = calculator.calculateFinalBalance(dto.paymentMethod(), account.getBalance(), dto.value());
+            account.setBalance(newBalance);
+            service.save(dto, account);
+
+            AccountDTO accountDTO = new AccountDTO(account.getNumber(), account.getBalance());
+            return ResponseEntity.status(HttpStatus.CREATED).body(accountDTO);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("mensagem", "Erro ao processar transação."));
         }
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(accountDTO);
     }
 }

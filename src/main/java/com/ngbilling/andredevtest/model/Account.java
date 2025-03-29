@@ -16,8 +16,16 @@ public class Account {
 
     private int number;
 
-    @Min(value = 0, message = "Can't have negative balance")
+    @Min(value = 0)
     private BigDecimal balance;
+
+    public Account() {
+    }
+
+    public Account(int number, BigDecimal balance) {
+        this.number = number;
+        this.balance = balance;
+    }
 
     public UUID getId() {
         return id;

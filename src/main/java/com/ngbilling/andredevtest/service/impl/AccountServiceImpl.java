@@ -23,13 +23,10 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public AccountDTO save(AccountDTO dto) {
-        Account account = new Account();
-        account.setNumber(dto.number());
-        account.setBalance(dto.balance());
-
+        Account account = new Account(dto.number(), dto.balance());
         repository.save(account);
 
-        return dto;
+        return new AccountDTO(account.getNumber(), account.getBalance());
     }
 
     @Override

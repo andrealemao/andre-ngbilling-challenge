@@ -18,6 +18,14 @@ public class Transaction {
     @JoinColumn(name = "account_id")
     private Account account;
 
+    public Transaction() {
+    }
+
+    public Transaction(String paymentMethod, Account account) {
+        this.paymentMethod = paymentMethod;
+        this.account = account;
+    }
+
     public UUID getId() {
         return id;
     }
